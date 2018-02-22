@@ -10,7 +10,7 @@ class DependencyResolver
      * @param string $method
      * @return ReflectionParameter[]
      */
-    public function getMethodDependencies(string $class, string $method = '__construct'): array
+    public function getMethodDependencies(string $class, string $method = '__construct')
     {
         $parameters = [];
 
