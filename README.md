@@ -222,7 +222,7 @@ $container = new Container();
 $container->boot();
 ```
 
-This does nothing more than loop through all Service Containers and call the `boot` on each one 
+This does nothing more than loop through all registered container providers and call the `boot` on each one 
 
 ### Definition Order
 It should not matter in which order you define your bindings as they are deferred until the moment they are needed.
