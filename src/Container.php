@@ -7,6 +7,7 @@ use MathiasGrimm\DiContainer\Exception\ContainerProviderAlreadyRegistered;
 use MathiasGrimm\DiContainer\Exception\NotResolvedDependencyException;
 use MathiasGrimm\DiContainer\Exception\ParameterNotInstantiable;
 use ReflectionClass;
+use ReflectionMethod;
 
 class Container
 {
@@ -21,9 +22,9 @@ class Container
     /** @var DependencyResolver  */
     protected $dependencyResolver;
 
-    public function __construct(DependencyResolver $dependencyResolver)
+    public function __construct()
     {
-        $this->dependencyResolver = $dependencyResolver;
+
     }
 
     /**
@@ -168,7 +169,7 @@ class Container
                 return $this->get($class);
             }
 
-            if ($dependencies = $this->dependencyResolver->getMethodDependencies($class, '__construct')) {
+            if ($dependencies = $this->getMethodDependencies($class, '__construct')) {
                 $args = [];
                 foreach ($dependencies as $dependency) {
                     if (!$dependency->getClass()) {
@@ -192,5 +193,27 @@ class Container
             $err = "could not resolve dependency for {$class} with error: {$e->getMessage()}";
             throw new NotResolvedDependencyException($err, 0, $e);
         }
+    }
+
+    /**
+     * @param string $class
+     * @param string $method
+     * @return ReflectionParameter[]
+     */
+    public function getMethodDependencies(string $class, string $method = '__construct')
+    {
+        $parameters = [];
+
+        if (!method_exists($class, $method)) {
+            return $parameters;
+        }
+
+        $refMethod  = new ReflectionMethod($class, $method);
+
+        foreach ($refMethod->getParameters() as $parameter) {
+            $parameters[] = $parameter;
+        }
+
+        return $parameters;
     }
 }

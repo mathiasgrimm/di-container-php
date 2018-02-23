@@ -13,10 +13,7 @@ class ContainerTest extends TestCase
 {
     private function getContainer()
     {
-        $factory = new ContainerFactory();
-        $container = $factory->create();
-
-        return $container;
+        return new Container();
     }
 
     /**
@@ -383,9 +380,6 @@ class ContainerTest extends TestCase
 
         $container->boot();
     }
-
-
-
 }
 
 class C1
@@ -447,3 +441,37 @@ class DummyContainerProvider implements ContainerProviderInterface
     }
 }
 
+interface I1
+{
+
+}
+
+class Impl1 implements I1
+{
+
+}
+
+class Impl2 implements I1
+{
+
+}
+
+class UsesImpl1
+{
+    public $impl;
+
+    public function __construct(I1 $impl)
+    {
+        $this->impl = $impl;
+    }
+}
+
+class UsesImpl2
+{
+    public $impl;
+
+    public function __construct(I1 $impl)
+    {
+        $this->impl = $impl;
+    }
+}
