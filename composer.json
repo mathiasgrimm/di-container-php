@@ -1,7 +1,7 @@
 {
   "name": "mathiasgrimm/di-container-php",
   "type": "library",
-  "description": ":package_description",
+  "description": "IoC Container with automatic dependency injection",
   "keywords": [
     "mathiasgrimm",
     "di-container-php",
