@@ -7,6 +7,7 @@ use MathiasGrimm\DiContainer\ContainerFactory;
 use MathiasGrimm\DiContainer\ContainerProviderInterface;
 use MathiasGrimm\DiContainer\Exception\ComponentFrozen;
 use MathiasGrimm\DiContainer\Exception\ComponentNotRegisteredException;
+use MathiasGrimm\DiContainer\Exception\ContainerAlreadyBootedException;
 use MathiasGrimm\DiContainer\Exception\ContainerProviderAlreadyRegistered;
 use MathiasGrimm\DiContainer\Exception\NotResolvedDependencyException;
 use PHPUnit\Framework\TestCase;
@@ -379,6 +380,34 @@ class ContainerTest extends TestCase
         $container->register($containerProvider2);
 
         $container->boot();
+    }
+
+    /**
+     * @test
+     */
+    public function booting_twice_should_throw_exception()
+    {
+        $container = $this->getContainer();
+
+        try {
+            $container->boot();
+            $container->boot();
+            $this->fail('should not allow booting twice');
+        } catch (ContainerAlreadyBootedException $e) {}
+
+        $this->assertEquals('', $e->getMessage());
+    }
+
+    /**
+     * @test
+     */
+    public function booted_works()
+    {
+        $container = $this->getContainer();
+
+        $this->assertFalse($container->booted());
+        $container->boot();
+        $this->assertTrue($container->booted());
     }
 
     /**

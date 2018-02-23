@@ -5,6 +5,7 @@ use InvalidArgumentException;
 use MathiasGrimm\ArrayPath\ArrayPath;
 use MathiasGrimm\DiContainer\Exception\ComponentFrozen;
 use MathiasGrimm\DiContainer\Exception\ComponentNotRegisteredException;
+use MathiasGrimm\DiContainer\Exception\ContainerAlreadyBootedException;
 use MathiasGrimm\DiContainer\Exception\ContainerProviderAlreadyRegistered;
 use MathiasGrimm\DiContainer\Exception\NotResolvedDependencyException;
 use MathiasGrimm\DiContainer\Exception\ParameterNotInstantiable;
@@ -20,6 +21,7 @@ class Container
     protected $bindings = [];
     protected $loadedBindings = [];
     protected $frozenBindings = [];
+    protected $booted = false;
 
     // -----------------------------------------------------------------------------------------------------------------
     // public methods
@@ -48,13 +50,27 @@ class Container
         $containerProvider->register($this);
     }
 
+    /**
+     * @throws ContainerAlreadyBootedException
+     */
     public function boot()
     {
+        if ($this->booted) {
+            throw new ContainerAlreadyBootedException();
+        }
+
         foreach ($this->providers as $provider) {
             $provider->boot($this);
         }
+
+        $this->booted = true;
     }
 
+    /**
+     * @param $key
+     * @param $value
+     * @param null $context
+     */
     public function bindSingleton($key, $value, $context = null)
     {
         $context = $this->getContext($key, $context);
@@ -62,6 +78,11 @@ class Container
         $this->bind($bind);
     }
 
+    /**
+     * @param $key
+     * @param $value
+     * @param null $context
+     */
     public function bindFactory($key, $value, $context = null)
     {
         if (!is_callable($value)) {
@@ -75,6 +96,11 @@ class Container
         $this->bind($bind);
     }
 
+    /**
+     * @param $key
+     * @param $value
+     * @param null $context
+     */
     public function bindInstance($key, $value, $context = null)
     {
         if (!is_object($value)) {
@@ -88,6 +114,12 @@ class Container
         $this->bind($bind);
     }
 
+    /**
+     * @param $key
+     * @param callable $value
+     * @param null $context
+     * @throws ComponentNotRegisteredException
+     */
     public function extend($key, callable $value, $context = null)
     {
         $this->validateFrozen($key, $context);
@@ -106,6 +138,12 @@ class Container
         });
     }
 
+    /**
+     * @param $key
+     * @param array $params
+     * @param $context
+     * @return mixed
+     */
     public function get($key, $params = [], $context = null)
     {
         $internalKey = $this->getInternalKey($key, $context);
@@ -160,24 +198,43 @@ class Container
         return $ret;
     }
 
+    /**
+     * @param $key
+     * @param null $context
+     * @return bool
+     */
     public function loaded($key, $context = null)
     {
         $internalKey = $this->getInternalKey($key, $context);
         return ArrayPath::exists($this->loadedBindings, $internalKey);
     }
 
+    /**
+     * @param $key
+     * @param null $context
+     * @return bool
+     */
     public function has($key, $context = null)
     {
         $internalKey = $this->getInternalKey($key, $context);
         return ArrayPath::exists($this->bindings, $internalKey);
     }
 
+    /**
+     * @param $key
+     * @param null $context
+     * @return bool
+     */
     public function frozen($key, $context = null)
     {
         $internalKey = $this->getInternalKey($key, $context);
         return ArrayPath::exists($this->frozenBindings, $internalKey);
     }
 
+    /**
+     * @param $key
+     * @param null $context
+     */
     public function unbind($key, $context = null)
     {
         $this->validateFrozen($key, $context);
@@ -187,6 +244,14 @@ class Container
         if (ArrayPath::exists($this->bindings, $internalKey)) {
             ArrayPath::remove($this->bindings, $internalKey);
         }
+    }
+
+    /**
+     * @return bool
+     */
+    public function booted()
+    {
+        return $this->booted;
     }
 
     /**
@@ -215,6 +280,9 @@ class Container
     // protected/private methods
     // -----------------------------------------------------------------------------------------------------------------
 
+    /**
+     * @param Bind $bind
+     */
     protected function bind(Bind $bind)
     {
         $this->validateFrozen($bind->getKey(), $bind->getContext());
@@ -223,6 +291,11 @@ class Container
         ArrayPath::set($this->bindings, $internalKey, $bind);
     }
 
+    /**
+     * @param $key
+     * @param $context
+     * @throws ComponentFrozen
+     */
     protected function validateFrozen($key, $context)
     {
         if ($this->frozen($key, $context)) {
@@ -273,11 +346,21 @@ class Container
         }
     }
 
+    /**
+     * @param $key
+     * @param $context
+     * @return mixed
+     */
     protected function getContext($key, $context)
     {
         return $context ? $context : $key;
     }
 
+    /**
+     * @param $key
+     * @param $context
+     * @return string
+     */
     protected function getInternalKey($key, $context)
     {
         $context = $this->getContext($key, $context);
