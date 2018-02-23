@@ -92,8 +92,18 @@ $container->register(new MyContainerProvider());
 Therefore you application can have multiple ContainerProvider and it helps extending your application 
 especially because third party vendors can provide some providers
 
+#### The `register` method 
+This is where you can register your bindings and possibly not do anything else.
+If you try to have other functionalities in this method it could be that another Service Container is not
+yet registered.
 
-Please see a more complete example bellow:
+#### The `boot` method 
+This is called only when all container providers have been registered and is safe to have some logic here
+as at this point container provider is loaded
+
+
+
+#### Please see a more complete example bellow
 
 ```
 class MyContainerProvider implements ContainerProviderInterface
@@ -108,7 +118,7 @@ class MyContainerProvider implements ContainerProviderInterface
     
     public function boot(Container $container)
     {
-    
+
     }
 }
 
@@ -134,10 +144,11 @@ class MyController
         $this->mailer = $mailer;
     }
     
-    public function emailUser()
+    public function emailUser($userId)
     {
+        // ...
         $mail = new Mail();
-        $mail->setTo('some-email@gmail.com');
+        $mail->setTo($user->getEmail());
         // ...
         $this->mailer->send($mail);
     }
@@ -152,14 +163,31 @@ class HttpHandler
         $this->container = $container;
     }
 
-    public function handleHttp()
+    public function handle()
     {
-        $controller = $container->get(MyController::class);
-        $controller->emailUser();
+        // gets controller,method and params based on the route
+        // $controller = MyController::class;
+        // $mthod      = emailUser
+        // $params     = ['user' => 1];
+        
+        $response = call_user_func_array([$controller, $method], $params);
+        // same as $controller->emailUser(1);
     }
 }
 
 ```
+
+#### boot method
+The container `boot` method has to be called by your application so that all container providers will be booted
+```
+$container = new Container();
+// $container->register(...);
+// $container->register(...);
+// $container->register(...);
+$container->boot();
+```
+
+This does nothing more than loop through all Service Containers and call the `boot` on each one 
 
 ### Definition Order
 It should not matter in which order you define your bindings as they are deferred until the moment they are needed.
