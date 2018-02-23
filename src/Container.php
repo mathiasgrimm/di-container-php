@@ -98,8 +98,9 @@ class Container
             throw new ComponentNotRegisteredException("you cannot extend {$key} as it was never registered");
         }
 
-        $value    = $bind->getValue();
-        $oldValue = $value($this);
+        $tmp      = $bind->getValue();
+        $oldValue = $tmp($this);
+
         $bind->setValue(function () use ($value, $oldValue){
             return $value($this, $oldValue);
         });
