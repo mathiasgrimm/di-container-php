@@ -21,7 +21,7 @@ before_install:
   - export CI_BRANCH="$TRAVIS_BRANCH"
 
 install:
-  - travis_retry composer update --prefer-dist --no-interaction --prefer-stable --no-suggest
+  - travis_retry composer install --prefer-dist --no-interaction --prefer-stable --no-suggest
   - mkdir -p build/logs
 
 script: vendor/bin/phpunit
