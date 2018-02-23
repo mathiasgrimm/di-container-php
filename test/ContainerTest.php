@@ -380,6 +380,30 @@ class ContainerTest extends TestCase
 
         $container->boot();
     }
+
+    /**
+     * @test
+     */
+    public function dependency_graph_respects_context()
+    {
+        $container = $this->getContainer();
+
+        // default context
+        $container->bindSingleton(Logger::class, function (Container $c, $params = []) {
+            return new SlackLogger();
+        });
+
+        // default context
+        $container->bindSingleton(Logger::class, function (Container $c, $params = []) {
+            return new FileLogger();
+        }, ControllerB::class);
+
+        $c1 = $container->get(ControllerA::class);
+        $c2 = $container->get(ControllerB::class);
+
+        $this->assertInstanceOf(SlackLogger::class, $c1->logger);
+        $this->assertInstanceOf(FileLogger::class, $c2->logger);
+    }
 }
 
 class C1
@@ -475,3 +499,38 @@ class UsesImpl2
         $this->impl = $impl;
     }
 }
+
+// --------------------------------------------------------------------------------------------
+interface Logger {}
+
+class SlackLogger implements Logger
+{
+
+}
+
+class FileLogger implements Logger
+{
+
+}
+
+class ControllerA
+{
+    public $logger;
+
+    public function __construct(Logger $logger)
+    {
+        $this->logger = $logger;
+    }
+}
+
+class ControllerB
+{
+    public $logger;
+
+    public function __construct(Logger $logger)
+    {
+        $this->logger = $logger;
+    }
+}
+
+// --------------------------------------------------------------------------------------------

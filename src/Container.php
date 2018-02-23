@@ -19,9 +19,6 @@ class Container
 
     protected $loadedBindings = [];
 
-    /** @var DependencyResolver  */
-    protected $dependencyResolver;
-
     public function __construct()
     {
 
@@ -52,13 +49,14 @@ class Container
         }
     }
 
-    public function bindSingleton($key, $value, $context = Bind::CONTEXT_DEFAULT)
+    public function bindSingleton($key, $value, $context = null)
     {
+        $context = $context ? $context : $key;
         $bind = new Bind($key, $value, Bind::TYPE_SINGLETON, $context);
         $this->bind($bind);
     }
 
-    public function bindFactory($key, $value, $context = Bind::CONTEXT_DEFAULT)
+    public function bindFactory($key, $value, $context = null)
     {
         if (!is_callable($value)) {
             throw new InvalidArgumentException(
@@ -66,11 +64,12 @@ class Container
             );
         }
 
+        $context = $context ? $context : $key;
         $bind = new Bind($key, $value, Bind::TYPE_FACTORY, $context);
         $this->bind($bind);
     }
 
-    public function bindInstance($key, $value, $context = Bind::CONTEXT_DEFAULT)
+    public function bindInstance($key, $value, $context = null)
     {
         if (!is_object($value)) {
             throw new InvalidArgumentException(
@@ -78,6 +77,7 @@ class Container
             );
         }
 
+        $context = $context ? $context : $key;
         $bind = new Bind($key, $value, Bind::TYPE_INSTANCE, $context);
         $this->bind($bind);
     }
@@ -88,8 +88,10 @@ class Container
         ArrayPath::set($this->bindings, "{$bind->getKey()}{$sep}{$bind->getContext()}", $bind);
     }
 
-    public function get($key, $params = [], $context = Bind::CONTEXT_DEFAULT)
+    public function get($key, $params = [], $context = null)
     {
+        $context = $context ? $context : $key;
+
         $sep = ArrayPath::getSeparator();
 
         if (ArrayPath::exists($this->loadedBindings, "{$key}{$sep}{$context}")) {
@@ -98,7 +100,7 @@ class Container
 
         // if key was not registered we will try to dynamically load it using reflection
         if (!$this->has($key, $context)) {
-            $ret = $this->resolve($key);
+            $ret = $this->resolve($key, $context);
             ArrayPath::set($this->loadedBindings, "{$key}{$sep}{$context}", $ret);
             return $ret;
         }
@@ -134,20 +136,26 @@ class Container
 
     }
 
-    public function loaded($key, $context = Bind::CONTEXT_DEFAULT)
+    public function loaded($key, $context = null)
     {
+        $context = $context ? $context : $key;
+
         $sep = ArrayPath::getSeparator();
         return ArrayPath::exists($this->loadedBindings, "{$key}{$sep}{$context}");
     }
 
-    public function has($key, $context = Bind::CONTEXT_DEFAULT)
+    public function has($key, $context = null)
     {
+        $context = $context ? $context : $key;
+
         $sep = ArrayPath::getSeparator();
         return ArrayPath::exists($this->bindings, "{$key}{$sep}{$context}");
     }
 
-    public function unbind($key, $context = Bind::CONTEXT_DEFAULT)
+    public function unbind($key, $context = null)
     {
+        $context = $context ? $context : $key;
+
         $sep = ArrayPath::getSeparator();
 
         ArrayPath::remove($this->bindings       , "{$key}{$sep}{$context}");
@@ -158,14 +166,16 @@ class Container
      * resolves recursively the class dependencies
      *
      * @param string $class
+     * @param $context
      * @return null|object
      * @throws NotResolvedDependencyException
-     * @throws ParameterNotInstantiable
      */
-    protected function resolve($class)
+    protected function resolve($class, $context)
     {
         try {
-            if ($this->has($class)) {
+            if ($this->has($class, $context)) {
+                return $this->get($class, [], $context);
+            } elseif ($this->has($class)) {
                 return $this->get($class);
             }
 
@@ -179,7 +189,7 @@ class Container
                         throw new ParameterNotInstantiable($e);
                     }
 
-                    $args[] = $object = $this->resolve($dependency->getClass()->getName());
+                    $args[] = $object = $this->resolve($dependency->getClass()->getName(), $class);
                 }
 
                 $refObject = new ReflectionClass($class);

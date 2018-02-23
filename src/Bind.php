@@ -7,8 +7,6 @@ class Bind
     const TYPE_SINGLETON = 'SINGLETON';
     const TYPE_INSTANCE  = 'INSTANCE';
 
-    const CONTEXT_DEFAULT = 'DEFAULT';
-
     private $key;
     private $value;
     private $context;
