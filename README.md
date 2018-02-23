@@ -5,11 +5,12 @@ Simple yet effective IoC Container with automatic dependency resolution
 ## Basic Usage
 
 ### Singleton
-When using singleton, the `Container->get()` method will always return the same object reference as it will be store internally within the container.
+When using singleton, the `Container->get()` method will always return the same object reference as it will 
+be stored internally within the container.
 ```
 $container = new Container();
 $container->bindSingleton(SomeComponentInterface::class, function (Container $c, $params = []) {
-    return $someComponentImplementation;
+    return new SomeComponentImplementation();
 });
 
 $aComponent = $container->get(SomeComponentInterface::class);
@@ -40,7 +41,7 @@ the `bindFactory` expects a callable (closure, or a class that implements the __
 ```
 $container = new Container();
 $container->bindFactory(SomeComponentInterface::class, function (Container $c, $params = []) {
-    return $someComponentImplementation;
+    return new SomeComponentImplementation();
 });
 
 $aComponent = $container->get(SomeComponentInterface::class);
@@ -59,13 +60,40 @@ $anObjectInstance = $container->get(SomeInterface::class);
 echo $anObjectInstance === $anObject; // will always be true
 
 // OR
-$container->bindSingleton('some-object', $anObject);
+$container->bindInstance('some-object', $anObject);
 $anObjectInstance = $container->get('some-object');
 echo $anObjectInstance === $anObject; // will always be true
 ```
 
+### Extends
+Extends will replace the original value with the new value and will pass the old value via param.
+This way you could decorate your component.
+
+The new binding will be of the same type. So if it was a factory it will still be a factory, if singleton it will still
+be a singleton and so on. For this reason, you cannot extend a component that hasn't been defined. If you try to do so
+you will get an ComponentNotRegisteredException exception
+
+```
+
+$container->bindSingleto(SomeInterface::class, function (Container $container, $params = []) {
+    return new FileLogger();
+});
+
+$container->extend(SomeInterface::class, function (Container $container, $oldValue) {
+    $logger = new DecoratorLogger($oldValue);
+    return $logger;
+});
+
+```
+
+### General Rules for all bindings
+- you cannot bind a component that has been already used
+- you cannot unbind a compoentn that has been already user
+- you cannot extend a component that has never been defined
+- you cannot extend a component that has been already used
+
 ## Usage with Container Providers
-To centralise and or make the bindings of your application more organised, you can use Container Providers.
+To centralise and/or make the bindings of your application more organised, you can use container providers.
 To use them you need to register them in the container.
 Every Container Provider has to implement the `ContainerProviderInterface`
 
@@ -89,17 +117,17 @@ class MyContainerProvider implements ContainerProviderInterface
 $container->register(new MyContainerProvider());
 ```
 
-Therefore you application can have multiple ContainerProvider and it helps extending your application 
+Therefore you application can have multiple container providers and it helps extending your application 
 especially because third party vendors can provide some providers
 
 #### The `register` method 
 This is where you can register your bindings and possibly not do anything else.
-If you try to have other functionalities in this method it could be that another Service Container is not
+If you try to have other functionalities in this method it could be that another container provider is not
 yet registered.
 
 #### The `boot` method 
 This is called only when all container providers have been registered and is safe to have some logic here
-as at this point container provider is loaded
+as at this point container providers are loaded
 
 
 
@@ -141,7 +169,7 @@ class MyController
     
     public function __construct(MailerInterface $mailer)
     {
-        $this->mailer = $mailer;
+        $this->mailer = $mailer; // this will be the LocalMailer instance
     }
     
     public function emailUser($userId)
@@ -165,7 +193,7 @@ class HttpHandler
 
     public function handle()
     {
-        // gets controller,method and params based on the route
+        // gets controllerName, method and params based on the route
         // $controllerName = MyController::class;
         // $mthod          = emailUser
         // $params         = ['user' => 1];
@@ -213,6 +241,9 @@ $container->get(SomeInterfaceA::class);
 Even thought `SomeInterfaceA::class` depends on `SomeInterfaceB::class` and `SomeInterfaceB::class` 
 was defined after `SomeInterfaceA::class` it will work just fine
 
+### Overwriting implementation
+
+
 ## Utility Methods
 
 ### get()
@@ -229,7 +260,7 @@ class SomeComponent
 $container->get(SomeComponent::class); // will return a SomeComponent instance.
 ```
 
-When the object if dynamically loaded it will be always a singleton
+When the object is dynamically loaded it will be always a singleton
 
 Concrete dependencies can be resolved automatically
 ```
@@ -284,6 +315,12 @@ Unbind removes all internal references to a given key
 Both `has` and `loaded` will return false to a key that has been `unbind()`
 
 If a key does not exists it will not throw any exceptions 
+
+### frozen()
+Checks whether a key is frozen on not.
+
+#### frozen() vs. loaded()
+A key can be frozen and not be loaded. This is the case for factories 
 
 ## Contextual Binding
 Every utility method, including the `get`, have a possibility to pass a context.

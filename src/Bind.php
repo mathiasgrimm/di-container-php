@@ -13,13 +13,44 @@ class Bind
     private $type;
 
     /**
+     * @param mixed $key
+     */
+    public function setKey($key): void
+    {
+        $this->key = $key;
+    }
+
+    /**
+     * @param mixed $value
+     */
+    public function setValue($value): void
+    {
+        $this->value = $value;
+    }
+
+    /**
+     * @param mixed $context
+     */
+    public function setContext($context): void
+    {
+        $this->context = $context;
+    }
+
+    /**
+     * @param mixed $type
+     */
+    public function setType($type): void
+    {
+        $this->type = $type;
+    }
+
+    /**
      * @return mixed
      */
     public function getKey()
     {
         return $this->key;
     }
-
 
     /**
      * @return mixed

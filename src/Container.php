@@ -3,6 +3,8 @@
 use Exception;
 use InvalidArgumentException;
 use MathiasGrimm\ArrayPath\ArrayPath;
+use MathiasGrimm\DiContainer\Exception\ComponentFrozen;
+use MathiasGrimm\DiContainer\Exception\ComponentNotRegisteredException;
 use MathiasGrimm\DiContainer\Exception\ContainerProviderAlreadyRegistered;
 use MathiasGrimm\DiContainer\Exception\NotResolvedDependencyException;
 use MathiasGrimm\DiContainer\Exception\ParameterNotInstantiable;
@@ -16,8 +18,12 @@ class Container
 
     /** @var Bind[] */
     protected $bindings = [];
-
     protected $loadedBindings = [];
+    protected $frozenBindings = [];
+
+    // -----------------------------------------------------------------------------------------------------------------
+    // public methods
+    // -----------------------------------------------------------------------------------------------------------------
 
     public function __construct()
     {
@@ -82,86 +88,146 @@ class Container
         $this->bind($bind);
     }
 
-    protected function bind(Bind $bind)
+    public function extend($key, callable $value, $context = null)
     {
-        $sep = ArrayPath::getSeparator();
-        ArrayPath::set($this->bindings, "{$bind->getKey()}{$sep}{$bind->getContext()}", $bind);
+        $this->validateFrozen($key, $context);
+        $internalKey = $this->getInternalKey($key, $context);
+
+        /** @var Bind $bind */
+        if (!$bind = ArrayPath::get($this->bindings, $internalKey)) {
+            throw new ComponentNotRegisteredException("you cannot extend {$key} as it was never registered");
+        }
+
+        $oldValue = $bind->getValue()($this);
+        $bind->setValue(function () use ($value, $oldValue){
+            return $value($this, $oldValue);
+        });
     }
 
     public function get($key, $params = [], $context = null)
     {
-        $context = $this->getContext($key, $context);
+        $internalKey = $this->getInternalKey($key, $context);
+        $context     = $this->getContext($key, $context);
 
-        $sep = ArrayPath::getSeparator();
+        $f = function () use ($key, $params, $context, $internalKey) {
 
-        if (ArrayPath::exists($this->loadedBindings, "{$key}{$sep}{$context}")) {
-            return ArrayPath::get($this->loadedBindings, "{$key}{$sep}{$context}");
-        }
+            if (ArrayPath::exists($this->loadedBindings, $internalKey)) {
+                return ArrayPath::get($this->loadedBindings, $internalKey);
+            }
 
-        // if key was not registered we will try to dynamically load it using reflection
-        if (!$this->has($key, $context)) {
-            $ret = $this->resolve($key, $context);
-            ArrayPath::set($this->loadedBindings, "{$key}{$sep}{$context}", $ret);
-            return $ret;
-        }
+            // if key was not registered we will try to dynamically load it using reflection
+            if (!$this->has($key, $context)) {
+                $ret = $this->resolve($key, $context);
+                ArrayPath::set($this->loadedBindings, $internalKey, $ret);
+                return $ret;
+            }
 
-        /** @var Bind $bind */
-        $bind  = ArrayPath::get($this->bindings, "{$key}{$sep}{$context}");
-        $value = $bind->getValue();
-        $ret   = null;
+            /** @var Bind $bind */
+            $bind  = ArrayPath::get($this->bindings, $internalKey);
+            $value = $bind->getValue();
+            $ret   = null;
 
-        switch ($bind->getType()) {
-            case Bind::TYPE_SINGLETON: {
-                if (is_callable($value)) {
-                    $ret = $value($this, $params);
-                } else {
-                    $ret = $value;
+            switch ($bind->getType()) {
+                case Bind::TYPE_SINGLETON: {
+                    if (is_callable($value)) {
+                        $ret = $value($this, $params);
+                    } else {
+                        $ret = $value;
+                    }
+                    break;
                 }
-                break;
+
+                case Bind::TYPE_INSTANCE: {
+                    $ret = $value;
+                    break;
+                }
+
+                case Bind::TYPE_FACTORY: {
+                    return $value($this, $params);;
+                }
             }
 
-            case Bind::TYPE_INSTANCE: {
-                $ret = $value;
-                break;
-            }
+            ArrayPath::set($this->loadedBindings, $internalKey, $ret);
 
-            case Bind::TYPE_FACTORY: {
-                return $value($this, $params);;
-            }
-        }
+            return $ret;
+        };
 
-        ArrayPath::set($this->loadedBindings, "{$key}{$sep}{$context}", $ret);
+        $ret = $f();
+        ArrayPath::set($this->frozenBindings, $internalKey, true);
 
         return $ret;
-
     }
 
     public function loaded($key, $context = null)
     {
-        $context = $this->getContext($key, $context);
-
-        $sep = ArrayPath::getSeparator();
-        return ArrayPath::exists($this->loadedBindings, "{$key}{$sep}{$context}");
+        $internalKey = $this->getInternalKey($key, $context);
+        return ArrayPath::exists($this->loadedBindings, $internalKey);
     }
 
     public function has($key, $context = null)
     {
-        $context = $this->getContext($key, $context);
+        $internalKey = $this->getInternalKey($key, $context);
+        return ArrayPath::exists($this->bindings, $internalKey);
+    }
 
-        $sep = ArrayPath::getSeparator();
-        return ArrayPath::exists($this->bindings, "{$key}{$sep}{$context}");
+    public function frozen($key, $context = null)
+    {
+        $internalKey = $this->getInternalKey($key, $context);
+        return ArrayPath::exists($this->frozenBindings, $internalKey);
     }
 
     public function unbind($key, $context = null)
     {
-        $context = $this->getContext($key, $context);
+        $this->validateFrozen($key, $context);
 
-        $sep = ArrayPath::getSeparator();
+        $internalKey = $this->getInternalKey($key, $context);
 
-        ArrayPath::remove($this->bindings       , "{$key}{$sep}{$context}");
-        ArrayPath::remove($this->loadedBindings , "{$key}{$sep}{$context}");
+        if (ArrayPath::exists($this->bindings, $internalKey)) {
+            ArrayPath::remove($this->bindings, $internalKey);
+        }
     }
 
+    /**
+     * @param string $class
+     * @param string $method
+     * @return ReflectionParameter[]
+     */
+    public function getMethodDependencies(string $class, string $method = '__construct')
+    {
+        $parameters = [];
+
+        if (!method_exists($class, $method)) {
+            return $parameters;
+        }
+
+        $refMethod  = new ReflectionMethod($class, $method);
+
+        foreach ($refMethod->getParameters() as $parameter) {
+            $parameters[] = $parameter;
+        }
+
+        return $parameters;
+    }
+
+    // -----------------------------------------------------------------------------------------------------------------
+    // protected/private methods
+    // -----------------------------------------------------------------------------------------------------------------
+
+    protected function bind(Bind $bind)
+    {
+        $this->validateFrozen($bind->getKey(), $bind->getContext());
+
+        $internalKey = $this->getInternalKey($bind->getKey(), $bind->getContext());
+        ArrayPath::set($this->bindings, $internalKey, $bind);
+    }
+
+    protected function validateFrozen($key, $context)
+    {
+        if ($this->frozen($key, $context)) {
+            throw new ComponentFrozen("cannot redefine/extend {$key} as it has been already used");
+        }
+    }
+    
     /**
      * resolves recursively the class dependencies
      *
@@ -205,30 +271,16 @@ class Container
         }
     }
 
-    /**
-     * @param string $class
-     * @param string $method
-     * @return ReflectionParameter[]
-     */
-    public function getMethodDependencies(string $class, string $method = '__construct')
-    {
-        $parameters = [];
-
-        if (!method_exists($class, $method)) {
-            return $parameters;
-        }
-
-        $refMethod  = new ReflectionMethod($class, $method);
-
-        foreach ($refMethod->getParameters() as $parameter) {
-            $parameters[] = $parameter;
-        }
-
-        return $parameters;
-    }
-
     protected function getContext($key, $context)
     {
         return $context ? $context : $key;
+    }
+
+    protected function getInternalKey($key, $context)
+    {
+        $context = $this->getContext($key, $context);
+        $sep     = ArrayPath::getSeparator();
+
+        return "{$key}{$sep}{$context}";
     }
 }
