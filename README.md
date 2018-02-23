@@ -336,11 +336,11 @@ implementations
 ```
 $container->bindSingleton(LoggerInterface::class, function () {
     return new SlackLogger();
-}, ControllerA::class)
+}, ControllerA::class);
 
 $container->bindSingleton(LoggerInterface::class, function () {
     return new FileLogger();
-}, ControllerB::class)
+}, ControllerB::class);
 
 // you can explicitly inform the context to get the loggers
 $container->get(LoggerInterface::class, [], ControllerA::class); // will return SlackLogger
@@ -368,6 +368,41 @@ class ControllerB
         // logger will be the FileLogger
     }
 }
+
+
 ```
 
-Contextual binding is a way to define: whe loading this class, please provide this implementation.
+Using Contextual binding and default binding
+
+```
+// default context
+$container->bindSingleton(LoggerInterface::class, function () {
+    return new SlackLogger();
+});
+
+// ControllerB context
+$container->bindSingleton(LoggerInterface::class, function () {
+    return new FileLogger();
+}, ControllerB::class);
+
+$container->get(ControllerA::class);
+$container->get(ControllerB::class);
+
+class ControllerA 
+{
+    public function __construct(LoggerInterface $logger)
+    {
+        // logger will be the SlackLogger
+    }
+}
+
+class ControllerB 
+{
+    public function __construct(LoggerInterface $logger)
+    {
+        // logger will be the FileLogger
+    }
+}
+```
+
+Contextual binding is a way to define: when loading this class, please provide this implementation.
