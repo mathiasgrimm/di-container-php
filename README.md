@@ -246,9 +246,6 @@ $container->get(SomeInterfaceA::class);
 Even thought `SomeInterfaceA::class` depends on `SomeInterfaceB::class` and `SomeInterfaceB::class` 
 was defined after `SomeInterfaceA::class` it will work just fine
 
-### Overwriting implementation
-
-
 ## Utility Methods
 
 ### get()
