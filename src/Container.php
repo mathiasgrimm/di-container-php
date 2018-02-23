@@ -194,7 +194,7 @@ class Container
      * @param string $method
      * @return ReflectionParameter[]
      */
-    public function getMethodDependencies(string $class, string $method = '__construct')
+    public function getMethodDependencies($class, $method = '__construct')
     {
         $parameters = [];
 
