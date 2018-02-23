@@ -1,6 +1,6 @@
 # di-container-php
 
-<a href="https://travis-ci.org/mathiasgrimm/di-container-php"><img src="https://travis-ci.org/mathiasgrimm/di-container-php.svg" alt="Build Status"></a>
+<a href="https://travis-ci.org/mathiasgrimm/di-container-php?branch=master"><img src="https://travis-ci.org/mathiasgrimm/di-container-php.svg" alt="Build Status"></a>
 [![Coverage Status](https://coveralls.io/repos/github/mathiasgrimm/di-container-php/badge.svg)](https://coveralls.io/github/mathiasgrimm/di-container-php)
 
 Simple yet effective IoC Container with automatic dependency resolution
