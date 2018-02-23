@@ -84,6 +84,7 @@ $container->bindSingleton(SomeInterface::class, function (Container $container, 
 });
 
 $container->extend(SomeInterface::class, function (Container $container, $oldValue) {
+    // oldValue is FileLogger
     $logger = new DecoratorLogger($oldValue);
     return $logger;
 });
@@ -92,7 +93,7 @@ $container->extend(SomeInterface::class, function (Container $container, $oldVal
 
 ### General Rules for all bindings
 - you cannot bind a component that has been already used
-- you cannot unbind a compoentn that has been already user
+- you cannot unbind a component that has been already user
 - you cannot extend a component that has never been defined
 - you cannot extend a component that has been already used
 
