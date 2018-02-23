@@ -337,57 +337,17 @@ $container->bindSingleton(LoggerInterface::class, function () {
     return new FileLogger();
 }, ControllerB::class)
 
+// you can explicitly inform the context to get the loggers
 $container->get(LoggerInterface::class, [], ControllerA::class); // will return SlackLogger
 $container->get(LoggerInterface::class, [], ControllerB::class); // will return FileLogger
-```
 
-This can be automatically used when:
+// and you can also call the controller classes and the dependencies will be injected as you need
+$container->get(ControllerA::class);
+$container->get(ControllerB::class);
 
-```
-class LoggerContainerProvider implements ContainerProviderInterface
-{
-    public function register(Container $container)
-    {
-        // default context uses Slack for exmple
-        $container->bindSingleton(LoggerInterface::class, function (Container $container, $params) {
-            return new SlackLogger();
-        });
-        
-        // a specific controller uses a FileLogger instead
-        $container->bindSingleton(LoggerInterface::class, function (Container $container, $params) {
-            return new FileLogger();
-        }, ControllerB::class);    
-    }
-    
-    public function boot(Container $container)
-    {
-
-    }
-}
-
-class HttpHandler
-{
-    protected $container;
-    
-    public function __construct(Container $container) 
-    {
-        $this->container = $container;
-    }
-
-    public function handle()
-    {
-        // gets controller,method and params based on the route
-        // $controller = MyController::class;
-        // $mthod      = emailUser
-        // $params     = ['user' => 1];
-        
-        $controller = $this->container->get($controller);
-        
-        $response = call_user_func_array([$controller, $method], $params);
-        // same as $controller->emailUser(1);
-    }
-}
-
+// ------------------------------------------------------
+// controllers
+// ------------------------------------------------------ 
 class ControllerA 
 {
     public function __construct(LoggerInterface $logger)
@@ -404,3 +364,5 @@ class ControllerB
     }
 }
 ```
+
+Contextual binding is a way to define: whe loading this class, please provide this implementation.
