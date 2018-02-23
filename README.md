@@ -324,6 +324,9 @@ Checks whether a key is frozen on not.
 #### frozen() vs. loaded()
 A key can be frozen and not be loaded. This is the case for factories 
 
+### booted()
+Whether the container has been already booted or not
+
 ## Contextual Binding
 Every utility method, including the `get`, have a possibility to pass a context.
 
