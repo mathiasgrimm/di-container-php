@@ -79,7 +79,7 @@ you will get an ComponentNotRegisteredException exception
 
 ```
 
-$container->bindSingleto(SomeInterface::class, function (Container $container, $params = []) {
+$container->bindSingleton(SomeInterface::class, function (Container $container, $params = []) {
     return new FileLogger();
 });
 
