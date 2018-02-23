@@ -15,7 +15,7 @@ class Bind
     /**
      * @param mixed $key
      */
-    public function setKey($key): void
+    public function setKey($key)
     {
         $this->key = $key;
     }
@@ -23,7 +23,7 @@ class Bind
     /**
      * @param mixed $value
      */
-    public function setValue($value): void
+    public function setValue($value)
     {
         $this->value = $value;
     }
@@ -31,7 +31,7 @@ class Bind
     /**
      * @param mixed $context
      */
-    public function setContext($context): void
+    public function setContext($context)
     {
         $this->context = $context;
     }
@@ -39,7 +39,7 @@ class Bind
     /**
      * @param mixed $type
      */
-    public function setType($type): void
+    public function setType($type)
     {
         $this->type = $type;
     }
