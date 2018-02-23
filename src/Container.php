@@ -51,7 +51,7 @@ class Container
 
     public function bindSingleton($key, $value, $context = null)
     {
-        $context = $context ? $context : $key;
+        $context = $this->getContext($key, $context);
         $bind = new Bind($key, $value, Bind::TYPE_SINGLETON, $context);
         $this->bind($bind);
     }
@@ -64,7 +64,7 @@ class Container
             );
         }
 
-        $context = $context ? $context : $key;
+        $context = $this->getContext($key, $context);
         $bind = new Bind($key, $value, Bind::TYPE_FACTORY, $context);
         $this->bind($bind);
     }
@@ -77,7 +77,7 @@ class Container
             );
         }
 
-        $context = $context ? $context : $key;
+        $context = $this->getContext($key, $context);
         $bind = new Bind($key, $value, Bind::TYPE_INSTANCE, $context);
         $this->bind($bind);
     }
@@ -90,7 +90,7 @@ class Container
 
     public function get($key, $params = [], $context = null)
     {
-        $context = $context ? $context : $key;
+        $context = $this->getContext($key, $context);
 
         $sep = ArrayPath::getSeparator();
 
@@ -138,7 +138,7 @@ class Container
 
     public function loaded($key, $context = null)
     {
-        $context = $context ? $context : $key;
+        $context = $this->getContext($key, $context);
 
         $sep = ArrayPath::getSeparator();
         return ArrayPath::exists($this->loadedBindings, "{$key}{$sep}{$context}");
@@ -146,7 +146,7 @@ class Container
 
     public function has($key, $context = null)
     {
-        $context = $context ? $context : $key;
+        $context = $this->getContext($key, $context);
 
         $sep = ArrayPath::getSeparator();
         return ArrayPath::exists($this->bindings, "{$key}{$sep}{$context}");
@@ -154,7 +154,7 @@ class Container
 
     public function unbind($key, $context = null)
     {
-        $context = $context ? $context : $key;
+        $context = $this->getContext($key, $context);
 
         $sep = ArrayPath::getSeparator();
 
@@ -225,5 +225,10 @@ class Container
         }
 
         return $parameters;
+    }
+
+    protected function getContext($key, $context)
+    {
+        return $context ? $context : $key;
     }
 }
